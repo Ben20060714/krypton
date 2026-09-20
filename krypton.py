@@ -194,10 +194,16 @@ def _status(title: str, details: list[str], *, stderr: bool = False) -> None:
             label, separator, value = line.partition(":")
             table.add_row(label + separator, value if separator else "")
         Console(file=stream).print(
-            Panel(table, title=f"[green]✓ {title}[/green]", expand=False, border_style="green")
+            Panel(
+                table,
+                title=f"[bold green]KRYPTON · {title}[/bold green]",
+                expand=False,
+                border_style="green",
+            )
         )
     else:
-        print(f"✓ {title}", file=stream)
+        print(f"KRYPTON · {title}", file=stream)
+        print("─" * 42, file=stream)
         width = max((len(line.partition(":")[0]) for line in details), default=0)
         for detail in details:
             label, separator, value = detail.partition(":")
@@ -289,6 +295,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                     f"Entrée: {args.input or 'stdin'}",
                     f"Sortie: {args.output or 'stdout'}",
                     "Algorithme: Argon2id + Fernet",
+                    "Statut: Protégé",
                 ]
                 if args.verbose:
                     details.append(f"Format: {PASSWORD_FORMAT}")

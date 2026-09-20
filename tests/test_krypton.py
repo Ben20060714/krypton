@@ -1,6 +1,7 @@
 import pytest
 from cryptography.fernet import Fernet
 
+import krypton
 from krypton import decrypt_message, decrypt_with_password, encrypt_message, encrypt_with_password
 
 
@@ -37,3 +38,14 @@ def test_legacy_key_api_remains_available() -> None:
     cipher_text = encrypt_message("legacy", key)
 
     assert decrypt_message(cipher_text, key) == "legacy"
+
+
+def test_cli_writes_encrypted_output_file(tmp_path, monkeypatch) -> None:
+    source = tmp_path / "message.txt"
+    encrypted = tmp_path / "message.krypton"
+    source.write_text("message à protéger", encoding="utf-8")
+    monkeypatch.setattr(krypton.getpass, "getpass", lambda _prompt: "mot de passe robuste")
+
+    assert krypton.main(["encrypt", "--input", str(source), "--output", str(encrypted), "--quiet"]) == 0
+    assert encrypted.exists()
+    assert encrypted.read_text(encoding="utf-8").startswith("K1$")

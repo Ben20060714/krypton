@@ -44,6 +44,9 @@ Chiffrer un fichier :
 krypton encrypt --input message.txt --output message.krypton
 ```
 
+Le fichier `message.krypton` contient le résultat chiffré. Il peut être
+transmis ou archivé, mais le mot de passe doit rester séparé et secret.
+
 Déchiffrer le fichier :
 
 ```bash
@@ -62,6 +65,18 @@ krypton encrypt --json --input message.txt --output message.krypton
 Par défaut, Krypton refuse d’écraser un fichier existant. Utilisez `--force`
 explicitement si cela est souhaité. L’option `--json` fournit une sortie
 adaptée aux scripts automatisés.
+
+Lorsqu’un fichier de sortie est fourni, l’interface affiche un résumé aligné
+de l’opération sans afficher le contenu sensible :
+
+```text
+╭─ KRYPTON · Message chiffré ─────────────╮
+│ Entrée      message.txt                 │
+│ Sortie      message.krypton             │
+│ Algorithme  Argon2id + Fernet           │
+│ Statut      Protégé                     │
+╰─────────────────────────────────────────╯
+```
 
 Le mot de passe est demandé sans être affiché. Sans `--input`, Krypton lit
 depuis stdin ; sans `--output`, il écrit vers stdout :
