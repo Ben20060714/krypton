@@ -14,11 +14,14 @@ parfaitement réversible.
 
 from __future__ import annotations
 
+import argparse
 import base64
 import binascii
 import getpass
 import os
-from typing import Union
+import sys
+from pathlib import Path
+from typing import Optional, Union
 
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
@@ -159,7 +162,18 @@ def decrypt_with_password(cipher_text: str, password: str) -> str:
     return decrypt_message(parts[2], key)
 
 
-if __name__ == "__main__":
+def _read_text(path: Optional[str]) -> str:
+    return Path(path).read_text(encoding="utf-8") if path else sys.stdin.read()
+
+
+def _write_text(path: Optional[str], content: str) -> None:
+    if path:
+        Path(path).write_text(content, encoding="utf-8")
+    else:
+        print(content)
+
+
+def _interactive() -> int:
     secret_password = getpass.getpass("Saisissez le mot de passe secret : ")
     secret_message = input("Saisissez le message secret : ")
 
@@ -173,3 +187,35 @@ if __name__ == "__main__":
     print("\n--- Décodage ---")
     print(f"Message retrouvé : {recovered_message}")
     print(f"Vérification : {'OK' if recovered_message == secret_message else 'ÉCHEC'}")
+    return 0
+
+
+def main(argv: Optional[list[str]] = None) -> int:
+    """Point d'entrée de la ligne de commande."""
+    parser = argparse.ArgumentParser(description="Chiffrement sécurisé de messages.")
+    subparsers = parser.add_subparsers(dest="command")
+    for command in ("encrypt", "decrypt"):
+        subparser = subparsers.add_parser(command, help=f"{command}er un fichier ou stdin")
+        subparser.add_argument("-i", "--input", help="fichier d'entrée (stdin par défaut)")
+        subparser.add_argument("-o", "--output", help="fichier de sortie (stdout par défaut)")
+
+    args = parser.parse_args(argv)
+    if args.command is None:
+        return _interactive()
+
+    password = getpass.getpass("Mot de passe : ")
+    try:
+        content = _read_text(args.input)
+        result = (
+            encrypt_with_password(content, password)
+            if args.command == "encrypt"
+            else decrypt_with_password(content.strip(), password)
+        )
+        _write_text(args.output, result)
+    except (OSError, ValueError) as exc:
+        parser.error(str(exc))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

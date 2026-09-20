@@ -19,7 +19,7 @@ Le processus inverse restitue exactement le message original.
 Installation de la dépendance :
 
 ```bash
-python -m pip install cryptography
+python -m pip install -e ".[dev]"
 ```
 
 ## Démarrage rapide
@@ -29,6 +29,16 @@ Depuis le dossier contenant `krypton.py`, lancez :
 ```bash
 python krypton.py
 ```
+
+Après installation, la commande `krypton` est également disponible :
+
+```bash
+krypton encrypt --input message.txt --output message.krypton
+krypton decrypt --input message.krypton --output message.txt
+```
+
+Sans `--input` ou `--output`, l'entrée standard et la sortie standard sont
+utilisées.
 
 Le programme va :
 
@@ -40,6 +50,15 @@ Le programme va :
 
 Le mot de passe est nécessaire pour déchiffrer le message. Le sel est inclus
 dans le résultat chiffré et n'a pas besoin d'être secret.
+
+## Tests et qualité
+
+Lancer les tests et le contrôle statique localement :
+
+```bash
+pytest
+ruff check .
+```
 
 ## Utilisation dans un autre programme
 
