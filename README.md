@@ -1,168 +1,174 @@
 # Krypton
 
-Krypton est un script Python qui chiffre un message texte avec une clé Fernet
-dérivée d'un mot de passe par Argon2id, puis applique deux représentations
-réversibles :
+Krypton est un outil Python de chiffrement de messages. Il utilise Argon2id
+pour dériver une clé depuis un mot de passe, puis Fernet pour fournir un
+chiffrement symétrique authentifié.
 
-1. dérivation de clé avec Argon2id ;
-2. chiffrement symétrique authentifié avec Fernet ;
-3. conversion des octets chiffrés en chaîne binaire ;
-4. conversion de cette chaîne binaire en hexadécimal.
+Les conversions binaire et hexadécimale sont uniquement des représentations
+réversibles ; elles n’ajoutent pas de sécurité cryptographique.
 
-Le processus inverse restitue exactement le message original.
+## Fonctionnalités
+
+- chiffrement et authentification avec Fernet ;
+- dérivation de clé résistante aux attaques par dictionnaire avec Argon2id ;
+- interface en ligne de commande pour fichiers, stdin et stdout ;
+- API Python réutilisable ;
+- validation des données et rejet des messages altérés ;
+- tests automatisés et vérification CI.
 
 ## Prérequis
 
-- Python 3.9 ou une version ultérieure ;
-- la bibliothèque `cryptography` 44 ou une version ultérieure.
+- Python 3.9 ou version ultérieure ;
+- `cryptography` 44 ou version ultérieure.
+- `rich` 13.7 ou version ultérieure pour l’affichage de la CLI.
 
-Installation de la dépendance :
+## Installation
+
+Pour utiliser Krypton :
+
+```bash
+python -m pip install .
+```
+
+Pour installer également les outils de développement :
 
 ```bash
 python -m pip install -e ".[dev]"
 ```
 
-## Démarrage rapide
+## Utilisation en ligne de commande
 
-Depuis le dossier contenant `krypton.py`, lancez :
+Chiffrer un fichier :
+
+```bash
+krypton encrypt --input message.txt --output message.krypton
+```
+
+Déchiffrer le fichier :
+
+```bash
+krypton decrypt --input message.krypton --output message.txt
+```
+
+Options utiles :
+
+```bash
+krypton encrypt --input message.txt --output message.krypton --verbose
+krypton decrypt --input message.krypton --output message.txt --force
+krypton encrypt --quiet --input message.txt
+krypton encrypt --json --input message.txt --output message.krypton
+```
+
+Par défaut, Krypton refuse d’écraser un fichier existant. Utilisez `--force`
+explicitement si cela est souhaité. L’option `--json` fournit une sortie
+adaptée aux scripts automatisés.
+
+Le mot de passe est demandé sans être affiché. Sans `--input`, Krypton lit
+depuis stdin ; sans `--output`, il écrit vers stdout :
+
+```bash
+echo "Message confidentiel" | krypton encrypt > message.krypton
+krypton decrypt < message.krypton
+```
+
+Pour une démonstration interactive :
 
 ```bash
 python krypton.py
 ```
 
-Après installation, la commande `krypton` est également disponible :
+Le mode interactif n’affiche pas le contenu chiffré complet afin de garder une
+interface lisible. Pour récupérer le texte chiffré, utilisez la commande CLI
+avec `--output` ou le mode `--quiet`.
 
-```bash
-krypton encrypt --input message.txt --output message.krypton
-krypton decrypt --input message.krypton --output message.txt
+## Format chiffré
+
+Les fonctions utilisant un mot de passe produisent un texte au format suivant :
+
+```text
+K1$sel-base64$contenu-hexadécimal
 ```
 
-Sans `--input` ou `--output`, l'entrée standard et la sortie standard sont
-utilisées.
+Le sel est aléatoire, stocké avec le message et n’a pas besoin d’être secret.
+Le mot de passe, lui, ne doit jamais être enregistré dans le dépôt ou partagé
+avec le texte chiffré.
 
-Le programme va :
-
-1. demander un mot de passe sans l'afficher ;
-2. générer un sel aléatoire et dériver une clé avec Argon2id ;
-3. demander un message secret ;
-4. afficher le résultat chiffré ;
-5. le décoder et afficher le message retrouvé.
-
-Le mot de passe est nécessaire pour déchiffrer le message. Le sel est inclus
-dans le résultat chiffré et n'a pas besoin d'être secret.
-
-## Tests et qualité
-
-Lancer les tests et le contrôle statique localement :
-
-```bash
-pytest
-ruff check .
-```
-
-## Utilisation dans un autre programme
+## Utilisation Python
 
 ```python
 from krypton import decrypt_with_password, encrypt_with_password
 
 message = "Message confidentiel"
-password = "Mot de passe long et unique"
+password = "un mot de passe long et unique"
 
 cipher_text = encrypt_with_password(message, password)
-print(f"Texte chiffré : {cipher_text}")
-
 original_message = decrypt_with_password(cipher_text, password)
+
 assert original_message == message
-print(original_message)
 ```
 
-La clé peut également être fournie sous forme de chaîne ASCII :
-
-```python
-key_text = key.decode("ascii")
-cipher_text = encrypt_message("Bonjour", key_text)
-message = decrypt_message(cipher_text, key_text)
-```
-
-## Fonctionnement des couches
-
-### Chiffrement
-
-```text
-message UTF-8
-    -> Fernet
-octets chiffrés
-    -> 8 bits par octet
-chaîne composée de 0 et de 1
-    -> encodage hexadécimal des caractères binaires
-texte hexadécimal final
-```
-
-La couche binaire utilise toujours huit bits par octet, y compris les zéros
-initiaux. La couche hexadécimale encode les octets ASCII de la chaîne binaire,
-ce qui garantit que chaque étape est entièrement réversible.
-
-### Déchiffrement
-
-`decrypt_message` applique les opérations dans l’ordre inverse :
-
-```text
-hexadécimal
-    -> chaîne binaire
-    -> octets chiffrés
-    -> déchiffrement Fernet
-    -> texte UTF-8 original
-```
-
-Fernet fournit un chiffrement authentifié : une clé incorrecte ou une donnée
-modifiée provoque une erreur au lieu de produire silencieusement un résultat
-invalide.
-
-## API
-
-### `encrypt_message(message, key)`
-
-- `message` : chaîne de caractères à chiffrer ;
-- `key` : clé Fernet en `bytes` ou en chaîne ASCII ;
-- retourne : chaîne hexadécimale finale.
-
-### `decrypt_message(cipher_text, key)`
-
-- `cipher_text` : résultat produit par `encrypt_message` ;
-- `key` : même clé Fernet que lors du chiffrement ;
-- retourne : message texte original.
-
-Une `ValueError` est levée si le texte est invalide, altéré ou si la clé ne
-permet pas de le déchiffrer.
-
-### `encrypt_with_password(message, password)` et `decrypt_with_password(cipher_text, password)`
-
-Ces fonctions utilisent Argon2id pour dériver une clé Fernet. Le résultat
-contient le format, le sel et le texte chiffré. Le sel n'est pas secret, mais le
-mot de passe doit rester confidentiel.
-
-## Générer et conserver une clé
-
-Pour générer une clé Fernet indépendante :
+L’API historique basée directement sur une clé Fernet reste disponible :
 
 ```python
 from cryptography.fernet import Fernet
+from krypton import decrypt_message, encrypt_message
 
 key = Fernet.generate_key()
-print(key.decode("ascii"))
+cipher_text = encrypt_message("Bonjour", key)
+assert decrypt_message(cipher_text, key) == "Bonjour"
 ```
 
-Une clé perdue ne peut pas être reconstituée. Pour un vrai projet, stockez-la
-dans un gestionnaire de secrets ou une variable d’environnement protégée,
-plutôt que dans le code source ou dans le dépôt Git.
+### API principale
 
-## Limites et bonnes pratiques
+#### `encrypt_with_password(message, password)`
 
-- Le texte hexadécimal est une représentation, pas une couche de sécurité
-  supplémentaire ; la confidentialité vient de Fernet.
-- Le résultat est plus volumineux que le message d’origine à cause des trois
-  conversions.
-- Ne réutilisez pas une clé exposée ou compromise.
-- Ce projet est adapté à une démonstration et à une intégration simple ; pour
-  une application de production, ajoutez une gestion sécurisée des clés, des
-  tests et une politique de rotation adaptée.
+Chiffre un message avec une clé dérivée par Argon2id. Retourne une chaîne au
+format `K1$sel-base64$contenu-hexadécimal`.
+
+#### `decrypt_with_password(cipher_text, password)`
+
+Déchiffre un résultat produit par `encrypt_with_password`. Une `ValueError` est
+levée si le format, le mot de passe ou le contenu est invalide.
+
+#### `encrypt_message(message, key)` / `decrypt_message(cipher_text, key)`
+
+API bas niveau utilisant directement une clé Fernet en `bytes` ou en texte
+ASCII. Ces fonctions sont utiles pour une intégration qui gère déjà ses clés.
+
+## Développement
+
+Lancer les tests :
+
+```bash
+pytest
+```
+
+Lancer le contrôle statique :
+
+```bash
+ruff check .
+```
+
+La CI exécute automatiquement ces vérifications pour chaque push et chaque
+pull request.
+
+## Sécurité et limites
+
+- Fernet assure la confidentialité et l’authenticité du message.
+- Argon2id protège la dérivation depuis un mot de passe ; utilisez un mot de
+  passe long, unique et conservé dans un gestionnaire de mots de passe.
+- Ne stockez jamais les mots de passe ou les clés dans le code source.
+- Le timestamp Fernet est visible dans le token ; il peut révéler le moment
+  approximatif du chiffrement.
+- Fernet charge le message complet en mémoire et convient donc surtout aux
+  messages et fichiers de taille modérée.
+- Les conversions binaire et hexadécimale augmentent la taille du résultat,
+  sans renforcer le chiffrement.
+
+Ce projet est destiné à l’apprentissage et à des intégrations simples. Une
+application sensible ou de production doit faire l’objet d’une revue de
+sécurité adaptée à son contexte. Voir également [SECURITY.md](SECURITY.md).
+
+## Licence
+
+Ce projet est distribué sous licence MIT. Voir [LICENSE](LICENSE).

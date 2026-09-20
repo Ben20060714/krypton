@@ -18,6 +18,7 @@ import argparse
 import base64
 import binascii
 import getpass
+import json
 import os
 import sys
 from pathlib import Path
@@ -25,6 +26,14 @@ from typing import Optional, Union
 
 from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
+
+try:
+    from rich.console import Console
+    from rich.panel import Panel
+
+    RICH_AVAILABLE = True
+except ImportError:  # pragma: no cover - fallback for minimal installations
+    RICH_AVAILABLE = False
 
 
 Key = Union[bytes, str]
@@ -173,20 +182,49 @@ def _write_text(path: Optional[str], content: str) -> None:
         print(content)
 
 
+def _status(title: str, details: list[str], *, stderr: bool = False) -> None:
+    """Affiche un statut lisible, avec Rich si la dépendance est disponible."""
+    stream = sys.stderr if stderr else sys.stdout
+    if RICH_AVAILABLE:
+        body = "\n".join(f"[bold]{line.split(':', 1)[0]}:[/bold]{line.split(':', 1)[1]}" if ":" in line else line for line in details)
+        Console(file=stream).print(Panel(body, title=f"[green]✓ {title}[/green]", expand=False))
+    else:
+        print(f"✓ {title}", file=stream)
+        for detail in details:
+            print(f"  {detail}", file=stream)
+
+
+def _error(message: str, *, stderr: bool = True) -> None:
+    stream = sys.stderr if stderr else sys.stdout
+    if RICH_AVAILABLE:
+        Console(file=stream).print(f"[bold red]✗ Erreur :[/bold red] {message}")
+    else:
+        print(f"Erreur : {message}", file=stream)
+
+
 def _interactive() -> int:
+    if RICH_AVAILABLE:
+        Console().print("[bold cyan]KRYPTON[/bold cyan] — Chiffrement sécurisé")
+        Console().print("─" * 38)
+    else:
+        print("KRYPTON — Chiffrement sécurisé")
+        print("─" * 38)
     secret_password = getpass.getpass("Saisissez le mot de passe secret : ")
     secret_message = input("Saisissez le message secret : ")
 
     final_cipher_text = encrypt_with_password(secret_message, secret_password)
 
-    print("\n--- Chiffrement ---")
-    print("Clé Fernet : dérivée avec Argon2id (non affichée)")
-    print(f"Résultat chiffré : {final_cipher_text}")
+    _status("Message chiffré", [
+        "Algorithme: Argon2id + Fernet",
+        f"Taille du résultat: {len(final_cipher_text)} caractères",
+        "Contenu chiffré: masqué",
+    ])
 
     recovered_message = decrypt_with_password(final_cipher_text, secret_password)
-    print("\n--- Décodage ---")
-    print(f"Message retrouvé : {recovered_message}")
-    print(f"Vérification : {'OK' if recovered_message == secret_message else 'ÉCHEC'}")
+    _status("Message déchiffré", [
+        f"Message retrouvé: {recovered_message}",
+        f"Vérification: {'OK' if recovered_message == secret_message else 'ÉCHEC'}",
+    ])
     return 0
 
 
@@ -198,10 +236,17 @@ def main(argv: Optional[list[str]] = None) -> int:
         subparser = subparsers.add_parser(command, help=f"{command}er un fichier ou stdin")
         subparser.add_argument("-i", "--input", help="fichier d'entrée (stdin par défaut)")
         subparser.add_argument("-o", "--output", help="fichier de sortie (stdout par défaut)")
+        subparser.add_argument("--force", action="store_true", help="autorise l'écrasement d'un fichier")
+        subparser.add_argument("--quiet", action="store_true", help="désactive les messages de statut")
+        subparser.add_argument("--verbose", action="store_true", help="affiche les détails de l'opération")
+        subparser.add_argument("--json", action="store_true", help="retourne le résultat au format JSON")
 
     args = parser.parse_args(argv)
     if args.command is None:
         return _interactive()
+
+    if args.output and Path(args.output).exists() and not args.force:
+        parser.error(f"le fichier de sortie existe déjà : {args.output} (utilisez --force)")
 
     password = getpass.getpass("Mot de passe : ")
     try:
@@ -211,9 +256,33 @@ def main(argv: Optional[list[str]] = None) -> int:
             if args.command == "encrypt"
             else decrypt_with_password(content.strip(), password)
         )
-        _write_text(args.output, result)
+        if args.json:
+            if args.output:
+                _write_text(args.output, result)
+            payload = {
+                "status": "ok",
+                "operation": args.command,
+                "input": args.input or "stdin",
+                "output": args.output or "stdout",
+                "algorithm": "Argon2id + Fernet",
+            }
+            if not args.output:
+                payload["data"] = result
+            print(json.dumps(payload, ensure_ascii=False))
+        else:
+            _write_text(args.output, result)
+            if not args.quiet:
+                details = [
+                    f"Entrée: {args.input or 'stdin'}",
+                    f"Sortie: {args.output or 'stdout'}",
+                    "Algorithme: Argon2id + Fernet",
+                ]
+                if args.verbose:
+                    details.append(f"Format: {PASSWORD_FORMAT}")
+                _status("Message chiffré" if args.command == "encrypt" else "Message déchiffré", details, stderr=not args.output)
     except (OSError, ValueError) as exc:
-        parser.error(str(exc))
+        _error(str(exc))
+        return 2
     return 0
 
 

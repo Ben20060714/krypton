@@ -10,7 +10,10 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = {text = "MIT"}
 authors = [{name = "Krypton contributors"}]
-dependencies = ["cryptography>=44"]
+dependencies = [
+    "cryptography>=44",
+    "rich>=13.7",
+]
 
 [project.optional-dependencies]
 dev = [
