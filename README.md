@@ -1,18 +1,20 @@
 # Krypton
 
-Krypton est un script Python qui applique trois couches réversibles à un
-message texte :
+Krypton est un script Python qui chiffre un message texte avec une clé Fernet
+dérivée d'un mot de passe par Argon2id, puis applique deux représentations
+réversibles :
 
-1. chiffrement symétrique authentifié avec Fernet ;
-2. conversion des octets chiffrés en chaîne binaire ;
-3. conversion de cette chaîne binaire en hexadécimal.
+1. dérivation de clé avec Argon2id ;
+2. chiffrement symétrique authentifié avec Fernet ;
+3. conversion des octets chiffrés en chaîne binaire ;
+4. conversion de cette chaîne binaire en hexadécimal.
 
 Le processus inverse restitue exactement le message original.
 
 ## Prérequis
 
 - Python 3.9 ou une version ultérieure ;
-- la bibliothèque `cryptography`.
+- la bibliothèque `cryptography` 44 ou une version ultérieure.
 
 Installation de la dépendance :
 
@@ -30,28 +32,27 @@ python krypton.py
 
 Le programme va :
 
-1. générer automatiquement une clé Fernet ;
-2. demander un message secret ;
-3. afficher le résultat de chaque couche ;
-4. décoder le résultat et afficher le message retrouvé.
+1. demander un mot de passe sans l'afficher ;
+2. générer un sel aléatoire et dériver une clé avec Argon2id ;
+3. demander un message secret ;
+4. afficher le résultat chiffré ;
+5. le décoder et afficher le message retrouvé.
 
-La clé affichée est nécessaire pour déchiffrer le message. En situation
-réelle, ne l’affichez pas et ne la partagez pas avec le texte chiffré.
+Le mot de passe est nécessaire pour déchiffrer le message. Le sel est inclus
+dans le résultat chiffré et n'a pas besoin d'être secret.
 
 ## Utilisation dans un autre programme
 
 ```python
-from cryptography.fernet import Fernet
+from krypton import decrypt_with_password, encrypt_with_password
 
-from krypton import decrypt_message, encrypt_message
-
-key = Fernet.generate_key()
 message = "Message confidentiel"
+password = "Mot de passe long et unique"
 
-cipher_text = encrypt_message(message, key)
+cipher_text = encrypt_with_password(message, password)
 print(f"Texte chiffré : {cipher_text}")
 
-original_message = decrypt_message(cipher_text, key)
+original_message = decrypt_with_password(cipher_text, password)
 assert original_message == message
 print(original_message)
 ```
@@ -114,6 +115,12 @@ invalide.
 
 Une `ValueError` est levée si le texte est invalide, altéré ou si la clé ne
 permet pas de le déchiffrer.
+
+### `encrypt_with_password(message, password)` et `decrypt_with_password(cipher_text, password)`
+
+Ces fonctions utilisent Argon2id pour dériver une clé Fernet. Le résultat
+contient le format, le sel et le texte chiffré. Le sel n'est pas secret, mais le
+mot de passe doit rester confidentiel.
 
 ## Générer et conserver une clé
 
