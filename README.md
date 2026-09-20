@@ -81,6 +81,9 @@ Le mode interactif n’affiche pas le contenu chiffré complet afin de garder un
 interface lisible. Pour récupérer le texte chiffré, utilisez la commande CLI
 avec `--output` ou le mode `--quiet`.
 
+Il vérifie également automatiquement le déchiffrement, mais ne réaffiche pas
+le message en clair.
+
 ## Format chiffré
 
 Les fonctions utilisant un mot de passe produisent un texte au format suivant :

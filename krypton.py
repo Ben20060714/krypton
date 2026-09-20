@@ -235,8 +235,8 @@ def _interactive() -> int:
 
     recovered_message = decrypt_with_password(final_cipher_text, secret_password)
     _status("Message déchiffré", [
-        f"Message retrouvé: {recovered_message}",
         f"Vérification: {'OK' if recovered_message == secret_message else 'ÉCHEC'}",
+        "Message en clair: masqué",
     ])
     return 0
 
