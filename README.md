@@ -46,7 +46,7 @@ from cryptography.fernet import Fernet
 from krypton import decrypt_message, encrypt_message
 
 key = Fernet.generate_key()
-message = "Message confidentiel 🔐"
+message = "Message confidentiel"
 
 cipher_text = encrypt_message(message, key)
 print(f"Texte chiffré : {cipher_text}")
