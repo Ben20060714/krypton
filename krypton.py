@@ -30,6 +30,7 @@ from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
 try:
     from rich.console import Console
     from rich.panel import Panel
+    from rich.table import Table
 
     RICH_AVAILABLE = True
 except ImportError:  # pragma: no cover - fallback for minimal installations
@@ -186,12 +187,24 @@ def _status(title: str, details: list[str], *, stderr: bool = False) -> None:
     """Affiche un statut lisible, avec Rich si la dépendance est disponible."""
     stream = sys.stderr if stderr else sys.stdout
     if RICH_AVAILABLE:
-        body = "\n".join(f"[bold]{line.split(':', 1)[0]}:[/bold]{line.split(':', 1)[1]}" if ":" in line else line for line in details)
-        Console(file=stream).print(Panel(body, title=f"[green]✓ {title}[/green]", expand=False))
+        table = Table(show_header=False, box=None, padding=(0, 1), expand=False)
+        table.add_column(style="bold cyan", no_wrap=True)
+        table.add_column(overflow="fold")
+        for line in details:
+            label, separator, value = line.partition(":")
+            table.add_row(label + separator, value if separator else "")
+        Console(file=stream).print(
+            Panel(table, title=f"[green]✓ {title}[/green]", expand=False, border_style="green")
+        )
     else:
         print(f"✓ {title}", file=stream)
+        width = max((len(line.partition(":")[0]) for line in details), default=0)
         for detail in details:
-            print(f"  {detail}", file=stream)
+            label, separator, value = detail.partition(":")
+            if separator:
+                print(f"  {label:<{width}} :{value}", file=stream)
+            else:
+                print(f"  {detail}", file=stream)
 
 
 def _error(message: str, *, stderr: bool = True) -> None:
