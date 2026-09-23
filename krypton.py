@@ -223,20 +223,19 @@ def _error(message: str, *, stderr: bool = True) -> None:
 
 def _interactive() -> int:
     if RICH_AVAILABLE:
-        Console().print("[bold cyan]KRYPTON[/bold cyan] — Chiffrement sécurisé")
+        Console().print("[bold cyan]KRYPTON[/bold cyan]")
         Console().print("─" * 38)
     else:
-        print("KRYPTON — Chiffrement sécurisé")
+        print("KRYPTON")
         print("─" * 38)
-    secret_password = getpass.getpass("Saisissez le mot de passe secret : ")
-    secret_message = input("Saisissez le message secret : ")
+    secret_password = getpass.getpass("Saisissez le mot de passe de sécurité : ")
+    secret_message = input("Saisissez le message à sécuriser : ")
 
     final_cipher_text = encrypt_with_password(secret_message, secret_password)
 
     _status("Message chiffré", [
         "Algorithme: Argon2id + Fernet",
         f"Taille du résultat: {len(final_cipher_text)} caractères",
-        "Contenu chiffré: masqué",
     ])
 
     recovered_message = decrypt_with_password(final_cipher_text, secret_password)
@@ -299,7 +298,7 @@ def main(argv: Optional[list[str]] = None) -> int:
                 ]
                 if args.verbose:
                     details.append(f"Format: {PASSWORD_FORMAT}")
-                _status("Message chiffré" if args.command == "encrypt" else "Message déchiffré", details, stderr=not args.output)
+                _status("Données chiffrées" if args.command == "encrypt" else "Données déchiffrées", details, stderr=not args.output)
     except (OSError, ValueError) as exc:
         _error(str(exc))
         return 2
