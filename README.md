@@ -92,8 +92,10 @@ Pour une démonstration interactive :
 python krypton.py
 ```
 
-Le mode interactif n’affiche pas le contenu chiffré complet afin de garder une
-interface lisible. Pour récupérer le texte chiffré, utilisez la commande CLI
+Le mode interactif fournit une TUI Rich avec la bannière centrée et un panneau
+centré récapitulant les données utilisateur. Le mot de passe y reste masqué.
+Il n’affiche pas le contenu chiffré complet afin de garder une interface lisible.
+Pour récupérer le texte chiffré, utilisez la commande CLI
 avec `--output` ou le mode `--quiet`.
 
 Il vérifie également automatiquement le déchiffrement, mais ne réaffiche pas

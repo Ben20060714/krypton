@@ -49,3 +49,7 @@ def test_cli_writes_encrypted_output_file(tmp_path, monkeypatch) -> None:
     assert krypton.main(["encrypt", "--input", str(source), "--output", str(encrypted), "--quiet"]) == 0
     assert encrypted.exists()
     assert encrypted.read_text(encoding="utf-8").startswith("K1$")
+
+
+def test_banner_is_loaded_relative_to_application() -> None:
+    assert krypton._read_banner() == krypton.BANNER_PATH.read_text(encoding="utf-8").rstrip("\n")
