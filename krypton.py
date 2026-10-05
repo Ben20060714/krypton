@@ -1,3 +1,5 @@
+# usr/bin/bash/!
+
 """Chiffrement réversible avec dérivation de clé et trois couches.
 
 Quand un mot de passe est utilisé, la clé est d'abord dérivée avec Argon2id.
@@ -28,6 +30,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
 
 try:
+    from rich.align import Align
     from rich.console import Console
     from rich.panel import Panel
     from rich.table import Table
@@ -43,6 +46,15 @@ SALT_SIZE = 16
 ARGON2_ITERATIONS = 3
 ARGON2_LANES = 4
 ARGON2_MEMORY_COST = 64 * 1024  # KiB (64 MiB)
+BANNER_PATH = Path(__file__).with_name("banner.txt")
+
+
+def _read_banner() -> str:
+    """Retourne la bannière de démarrage, ou une valeur vide si absente."""
+    try:
+        return BANNER_PATH.read_text(encoding="utf-8").rstrip("\n")
+    except OSError:
+        return ""
 
 
 def _key_from_password(password: str, salt: bytes) -> bytes:
@@ -221,15 +233,52 @@ def _error(message: str, *, stderr: bool = True) -> None:
         print(f"Erreur : {message}", file=stream)
 
 
+def _interactive_user_panel(message: str, password: str) -> Panel:
+    """Construit le panneau centré récapitulant les données saisies."""
+    table = Table.grid(padding=(0, 2))
+    table.add_column(style="bold cyan", no_wrap=True)
+    table.add_column(overflow="fold", max_width=68)
+    table.add_row("Message", message or "(vide)")
+    table.add_row("Mot de passe", "•" * min(len(password), 24) or "(vide)")
+    return Panel(
+        table,
+        title="[bold cyan]Données utilisateur[/bold cyan]",
+        border_style="cyan",
+        padding=(1, 2),
+        expand=False,
+    )
+
+
 def _interactive() -> int:
+    banner = _read_banner()
     if RICH_AVAILABLE:
-        Console().print("[bold cyan]KRYPTON[/bold cyan]")
-        Console().print("─" * 38)
+        console = Console()
+        console.print(
+            Align.center(
+                banner or "KRYPTON",
+                vertical="middle",
+            )
+        )
+        console.print(
+            Align.center(
+                Panel(
+                    "[bold]Chiffrez votre message en toute sécurité.[/bold]\n"
+                    "Vos données restent dans votre terminal.",
+                    title="[bold green]KRYPTON[/bold green]",
+                    border_style="green",
+                    padding=(1, 3),
+                    expand=False,
+                )
+            )
+        )
     else:
-        print("KRYPTON")
+        print(banner or "KRYPTON")
         print("─" * 38)
     secret_password = getpass.getpass("Saisissez le mot de passe de sécurité : ")
     secret_message = input("Saisissez le message à sécuriser : ")
+
+    if RICH_AVAILABLE:
+        Console().print(Align.center(_interactive_user_panel(secret_message, secret_password)))
 
     final_cipher_text = encrypt_with_password(secret_message, secret_password)
 
