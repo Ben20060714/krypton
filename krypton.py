@@ -206,11 +206,13 @@ def _status(title: str, details: list[str], *, stderr: bool = False) -> None:
             label, separator, value = line.partition(":")
             table.add_row(label + separator, value if separator else "")
         Console(file=stream).print(
-            Panel(
-                table,
-                title=f"[bold green]KRYPTON · {title}[/bold green]",
-                expand=False,
-                border_style="green",
+            Align.center(
+                Panel(
+                    table,
+                    title=f"[bold green]KRYPTON · {title}[/bold green]",
+                    expand=False,
+                    border_style="green",
+                )
             )
         )
     else:
@@ -228,7 +230,9 @@ def _status(title: str, details: list[str], *, stderr: bool = False) -> None:
 def _error(message: str, *, stderr: bool = True) -> None:
     stream = sys.stderr if stderr else sys.stdout
     if RICH_AVAILABLE:
-        Console(file=stream).print(f"[bold red]✗ Erreur :[/bold red] {message}")
+        Console(file=stream).print(
+            Align.center(f"[bold red]✗ Erreur :[/bold red] {message}")
+        )
     else:
         print(f"Erreur : {message}", file=stream)
 
@@ -247,6 +251,11 @@ def _interactive_user_panel(message: str, password: str) -> Panel:
         padding=(1, 2),
         expand=False,
     )
+
+
+def _centered_prompt(prompt: str, console: Console) -> str:
+    """Centre le libellé d'une invite sur la largeur du terminal."""
+    return prompt.center(console.width)
 
 
 def _interactive() -> int:
@@ -274,8 +283,14 @@ def _interactive() -> int:
     else:
         print(banner or "KRYPTON")
         print("─" * 38)
-    secret_password = getpass.getpass("Saisissez le mot de passe de sécurité : ")
-    secret_message = input("Saisissez le message à sécuriser : ")
+    if RICH_AVAILABLE:
+        secret_password = getpass.getpass(
+            _centered_prompt("Saisissez le mot de passe de sécurité : ", console)
+        )
+        secret_message = input(_centered_prompt("Saisissez le message à sécuriser : ", console))
+    else:
+        secret_password = getpass.getpass("Saisissez le mot de passe de sécurité : ")
+        secret_message = input("Saisissez le message à sécuriser : ")
 
     if RICH_AVAILABLE:
         Console().print(Align.center(_interactive_user_panel(secret_message, secret_password)))
